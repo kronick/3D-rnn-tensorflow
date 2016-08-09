@@ -23,6 +23,8 @@ parser.add_argument('--sample_length', type=int, default=800,
                    help='number of strokes to sample')
 parser.add_argument('--scale_factor', type=int, default=10,
                    help='factor to scale down by for svg output.  smaller means bigger output')
+parser.add_argument('--temperature', type=float, default=1.0,
+                   help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
 sample_args = parser.parse_args()
 
 with open(os.path.join('save', 'config.pkl')) as f:
@@ -38,7 +40,7 @@ print "loading model: ",ckpt.model_checkpoint_path
 saver.restore(sess, ckpt.model_checkpoint_path)
 
 def sample_stroke():
-  [strokes, params] = model.sample(sess, sample_args.sample_length)
+  [strokes, params] = model.sample(sess, sample_args.sample_length,sample_args.temperature)
   draw_strokes(strokes, factor=sample_args.scale_factor, svg_filename = sample_args.filename+'.normal.svg')
   draw_strokes_random_color(strokes, factor=sample_args.scale_factor, svg_filename = sample_args.filename+'.color.svg')
   draw_strokes_random_color(strokes, factor=sample_args.scale_factor, per_stroke_mode = False, svg_filename = sample_args.filename+'.multi_color.svg')

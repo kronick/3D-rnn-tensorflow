@@ -14,7 +14,7 @@ p6
 F10
 sS'rnn_size'
 p7
-I256
+I512
 sS'data_scale'
 p8
 I20
@@ -23,7 +23,7 @@ p9
 F0.0050000000000000001
 sS'num_layers'
 p10
-I2
+I1
 sS'seq_length'
 p11
 I300
@@ -38,7 +38,7 @@ p14
 I50
 sS'num_epochs'
 p15
-I100
+I30
 sS'model'
 p16
 S'lstm'

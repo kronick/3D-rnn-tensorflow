@@ -129,9 +129,12 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, num=1200):
+  def sample(self, sess, num=1200, scale_sigma = 1.0):
 
     def get_pi_idx(x, pdf):
+      """ Used to choose a random component from the weighted set of gaussian mixtures
+          Returns the index of the chosen mixture """
+
       N = pdf.size
       accumulate = 0
       for i in range(0, N):
@@ -147,6 +150,8 @@ class Model():
       x = np.random.multivariate_normal(mean, cov, 1)
       return x[0][0], x[0][1]
 
+    # Set up starting conditions
+    # TODO: Allow for priming with a sequence from the training data
     prev_x = np.zeros((1, 1, 3), dtype=np.float32)
     prev_x[0, 0, 2] = 1 # initially, we want to see beginning of new stroke
     prev_state = sess.run(self.cell.zero_state(1, tf.float32))
@@ -155,16 +160,26 @@ class Model():
     mixture_params = []
 
     for i in xrange(num):
+      # Each time step
 
       feed = {self.input_data: prev_x, self.initial_state:prev_state}
 
+      # Get new output based on previous step
+      # SK: Is this the way you do it in Tensorflow because it has no RNN concept natively?
       [o_pi, o_mu1, o_mu2, o_sigma1, o_sigma2, o_corr, o_eos, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.sigma1, self.sigma2, self.corr, self.eos, self.final_state],feed)
 
+
+      # Choose a guassian distribution to sample from based on their weights
       idx = get_pi_idx(random.random(), o_pi[0])
 
+      # Chance of picking up pen at each step
       eos = 1 if random.random() < o_eos[0][0] else 0
 
-      next_x1, next_x2 = sample_gaussian_2d(o_mu1[0][idx], o_mu2[0][idx], o_sigma1[0][idx], o_sigma2[0][idx], o_corr[0][idx])
+      # Calculate a weighted random next point according to the chosen gaussian distribution
+      # First, scale the standard deviations to bias towards more or less "normal" output, but don't propogate this scale to the next iteration
+      sig1 = scale_sigma * o_sigma1[0][idx]
+      sig2 = scale_sigma * o_sigma2[0][idx]
+      next_x1, next_x2 = sample_gaussian_2d(o_mu1[0][idx], o_mu2[0][idx], sig1, sig2, o_corr[0][idx])
 
       strokes[i,:] = [next_x1, next_x2, eos]
 

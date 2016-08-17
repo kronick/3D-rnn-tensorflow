@@ -191,6 +191,8 @@ class DataLoader():
 
     # function to read each individual xml file
     def getStrokes(filename):
+      """ Returns an array of strokes in the given file 
+          Each stroke is an array of [x,y] points, so this returns an array of arrays of arrays"""
       tree = ET.parse(filename)
       root = tree.getroot()
 
@@ -262,16 +264,29 @@ class DataLoader():
 
     for data in self.raw_data:
       if len(data) > (self.seq_length+2):
-        # removes large gaps from the data
+        # removes large jumps between points from the data
         data = np.minimum(data, self.limit)
         data = np.maximum(data, -self.limit)
         data = np.array(data,dtype=np.float32)
-        data[:,0:2] /= self.scale_factor
+        data[:,0:2] /= self.scale_factor # scale only x,y coords, not pen up/down flag
         self.data.append(data)
         counter += int(len(data)/((self.seq_length+2))) # number of equiv batches this datapoint is worth
 
     # minus 1, since we want the ydata to be a shifted version of x data
     self.num_batches = int(counter / self.batch_size)
+
+
+  def get_stroke_sequence_array(self, index):
+    if index < 0 or index >= len(self.raw_data):
+      return None
+
+    data = self.raw_data[index]
+    # Eliminate large jumps between points from the data
+    data = np.minimum(data, self.limit)
+    data = np.maximum(data, -self.limit)
+    data = np.array(data,dtype=np.float32) # Conver to array
+    data[:,0:2] /= self.scale_factor
+    return data
 
   def next_batch(self):
     # returns a randomised, seq_length sized portion of the training data

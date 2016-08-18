@@ -17,7 +17,7 @@ p7
 I256
 sS'data_scale'
 p8
-F5
+F1
 sS'learning_rate'
 p9
 F0.0050000000000000001
@@ -52,7 +52,7 @@ S'lstm'
 p20
 sS'save_every'
 p21
-I500
+I100
 sS'keep_prob'
 p22
 F0.80000000000000004

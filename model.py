@@ -56,11 +56,6 @@ class Model():
 
     [x1_data, x2_data, x3_data, eos_data] = tf.split(1, COORDINATE_DIMENSIONS + 1, flat_target_data)
 
-    # long method:
-    #flat_target_data = tf.split(1, args.seq_length, self.target_data)
-    #flat_target_data = [tf.squeeze(flat_target_data_, [1]) for flat_target_data_ in flat_target_data]
-    #flat_target_data = tf.reshape(tf.concat(1, flat_target_data), [-1, 3])
-
     def tf_3d_normal(x1, x2, x3, mu1, mu2, mu3, sigma):
       # Probability distribution function for iosotropic multivariate gaussian at point (x1, x2, x3)
       # Isotropic because we have only 1 variance/sigma for all dimensions.
@@ -75,7 +70,7 @@ class Model():
       numerator = tf.exp(tf.div(-Z, 2 * tf.square(sigma)))
       denominator = tf.pow(2 * np.pi, 3./2.) * tf.pow(sigma, 3)
 
-      resul = tf.div(numberator, denominator)
+      result = tf.div(numerator, denominator)
       
       return result
 
@@ -137,7 +132,7 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, num=1200, scale_sigma = 1.0, prime_array = None):
+  def sample(self, sess, sequence_length =1200, scale_sigma = 1.0, prime_array = None):
 
     def get_pi_idx(x, pdf):
       """ Used to choose a random component from the weighted set of gaussian mixtures
@@ -167,7 +162,7 @@ class Model():
 
     prime_stroke_count = 0 if prime_array is None else len(prime_array)
 
-    strokes = np.zeros((num + prime_stroke_count, COORDINATE_DIMENSIONS + 1), dtype=np.float32)
+    patch_points = np.zeros((sequence_length + prime_stroke_count, COORDINATE_DIMENSIONS + 1), dtype=np.float32)
     mixture_params = []
 
     # Feed in the priming array if provided 
@@ -185,18 +180,18 @@ class Model():
         prev_state = next_state
 
         # And add stroke to output
-        strokes[i,:] = point
-        params = [o_pi[0], o_mu1[0], o_mu2[0], o_sigma1[0], o_sigma2[0], o_corr[0], o_eos[0]]
+        patch_points[i,:] = point
+        params = [o_pi[0], o_mu1[0], o_mu2[0], o_mus3[0], o_sigma[0], o_eos[0]]
         mixture_params.append(params)
         i += 1
 
-    for i in xrange(num):
+    for i in xrange(sequence_length):
       # Each time step
 
       feed = {self.input_data: prev_x, self.initial_state:prev_state}
 
       # Get new output based on previous step
-      [o_pi, o_mu1, o_mu2, o_sigma1, o_sigma2, o_corr, o_eos, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.sigma1, self.sigma2, self.corr, self.eos, self.final_state],feed)
+      [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.final_state],feed)
 
       # Choose a guassian distribution to sample from based on their weights
       idx = get_pi_idx(random.random(), o_pi[0])
@@ -207,16 +202,16 @@ class Model():
       # Calculate a weighted random next point according to the chosen gaussian distribution
       # Scale the standard deviations to bias towards more or less "normal" output
       sig1 = sig2 = sig3 = scale_sigma * o_sigma[0][idx]
-      next_x1, next_x2 = sample_gaussian_2d(o_mu1[0][idx], o_mu2[0][idx], o_mus[0][idx], sig1, sig2, sig3)
+      next_x1, next_x2, next_x3 = sample_gaussian_2d(o_mu1[0][idx], o_mu2[0][idx], o_mu3[0][idx], sig1, sig2, sig3)
 
-      strokes[i + prime_stroke_count,:] = [next_x1, next_x2, eos]
+      patch_points[i + prime_stroke_count,:] = [next_x1, next_x2, next_x3, eos]
 
-      params = [o_pi[0], o_mu1[0], o_mu2[0], o_sigma1[0], o_sigma2[0], o_corr[0], o_eos[0]]
+      params = [o_pi[0], o_mu1[0], o_mu2[0], o_mus3[0], o_sigma[0], o_eos[0]]
       mixture_params.append(params)
 
       prev_x = np.zeros((1, 1, 3), dtype=np.float32)
       prev_x[0][0] = np.array([next_x1, next_x2, eos], dtype=np.float32)
       prev_state = next_state
 
-    strokes[:,0:2] *= self.args.data_scale
-    return strokes, mixture_params
+    patch_points[:,0:2] *= self.args.data_scale
+    return patch_points, mixture_params

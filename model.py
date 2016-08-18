@@ -7,7 +7,7 @@ class Model():
   def __init__(self, args, infer=False):
     self.args = args
 
-    COORDINATE_DIMENSIONS = 3
+    self.COORDINATE_DIMENSIONS = 3
 
     if infer:
       args.batch_size = 1
@@ -31,13 +31,13 @@ class Model():
 
     self.cell = cell
 
-    self.input_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, COORDINATE_DIMENSIONS + 1])
-    self.target_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, COORDINATE_DIMENSIONS + 1])
+    self.input_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, self.COORDINATE_DIMENSIONS + 1])
+    self.target_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, self.COORDINATE_DIMENSIONS + 1])
     self.initial_state = cell.zero_state(batch_size=args.batch_size, dtype=tf.float32)
 
     self.num_mixture = args.num_mixture
     #NOUT = 1 + self.num_mixture * 6 # end_of_stroke + prob + 2*(mu + sig) + corr
-    NOUT = 1 + self.num_mixture * (2 + COORDINATE_DIMENSIONS) # end_of_stroke + mixtures * (weight + std deviation + COORDINATE_DIMENSIONS*mean)
+    NOUT = 1 + self.num_mixture * (2 + self.COORDINATE_DIMENSIONS) # end_of_stroke + mixtures * (weight + std deviation + COORDINATE_DIMENSIONS*mean)
 
     with tf.variable_scope('rnnlm'):
       output_w = tf.get_variable("output_w", [args.rnn_size, NOUT])
@@ -52,9 +52,9 @@ class Model():
     self.final_state = last_state
 
     # reshape target data so that it is compatible with prediction shape
-    flat_target_data = tf.reshape(self.target_data,[-1, COORDINATE_DIMENSIONS + 1])
+    flat_target_data = tf.reshape(self.target_data,[-1, self.COORDINATE_DIMENSIONS + 1])
 
-    [x1_data, x2_data, x3_data, eos_data] = tf.split(1, COORDINATE_DIMENSIONS + 1, flat_target_data)
+    [x1_data, x2_data, x3_data, eos_data] = tf.split(1, self.COORDINATE_DIMENSIONS + 1, flat_target_data)
 
     def tf_3d_normal(x1, x2, x3, mu1, mu2, mu3, sigma):
       # Probability distribution function for iosotropic multivariate gaussian at point (x1, x2, x3)
@@ -132,7 +132,7 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, sequence_length =1200, scale_sigma = 1.0, prime_array = None):
+  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None):
 
     def get_pi_idx(x, pdf):
       """ Used to choose a random component from the weighted set of gaussian mixtures
@@ -155,14 +155,14 @@ class Model():
       return x[0][0], x[0][1], x[0][2]
 
     # Set up starting conditions 
-    prev_x = np.zeros((1, 1, COORDINATE_DIMENSIONS + 1), dtype=np.float32)
-    prev_x[0, 0, COORDINATE_DIMENSIONS] = 1 # initially, we want to see beginning of new stroke
+    prev_x = np.zeros((1, 1, self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
+    prev_x[0, 0, self.COORDINATE_DIMENSIONS] = 1 # initially, we want to see beginning of new stroke
     prev_state = sess.run(self.cell.zero_state(1, tf.float32))
 
 
     prime_stroke_count = 0 if prime_array is None else len(prime_array)
 
-    patch_points = np.zeros((sequence_length + prime_stroke_count, COORDINATE_DIMENSIONS + 1), dtype=np.float32)
+    patch_points = np.zeros((sequence_length + prime_stroke_count, self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
     mixture_params = []
 
     # Feed in the priming array if provided 
@@ -176,12 +176,12 @@ class Model():
         # Skip the parts where we calculate next point from MDN because we should just use the next point in the prime training sequence
 
         # But propogate the state forward
-        prev_x = point.reshape(1,1,3)
+        prev_x = point.reshape(1,1,4)
         prev_state = next_state
 
         # And add stroke to output
         patch_points[i,:] = point
-        params = [o_pi[0], o_mu1[0], o_mu2[0], o_mus3[0], o_sigma[0], o_eos[0]]
+        params = [o_pi[0], o_mu1[0], o_mu2[0], o_mu3[0], o_sigma[0], o_eos[0]]
         mixture_params.append(params)
         i += 1
 
@@ -202,16 +202,16 @@ class Model():
       # Calculate a weighted random next point according to the chosen gaussian distribution
       # Scale the standard deviations to bias towards more or less "normal" output
       sig1 = sig2 = sig3 = scale_sigma * o_sigma[0][idx]
-      next_x1, next_x2, next_x3 = sample_gaussian_2d(o_mu1[0][idx], o_mu2[0][idx], o_mu3[0][idx], sig1, sig2, sig3)
+      next_x1, next_x2, next_x3 = sample_gaussian_3d(o_mu1[0][idx], o_mu2[0][idx], o_mu3[0][idx], sig1, sig2, sig3)
 
       patch_points[i + prime_stroke_count,:] = [next_x1, next_x2, next_x3, eos]
 
-      params = [o_pi[0], o_mu1[0], o_mu2[0], o_mus3[0], o_sigma[0], o_eos[0]]
+      params = [o_pi[0], o_mu1[0], o_mu2[0], o_mu3[0], o_sigma[0], o_eos[0]]
       mixture_params.append(params)
 
-      prev_x = np.zeros((1, 1, 3), dtype=np.float32)
-      prev_x[0][0] = np.array([next_x1, next_x2, eos], dtype=np.float32)
+      prev_x = np.zeros((1, 1, self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
+      prev_x[0][0] = np.array([next_x1, next_x2, next_x3, eos], dtype=np.float32)
       prev_state = next_state
 
-    patch_points[:,0:2] *= self.args.data_scale
+    patch_points[:,0:3] /= self.args.data_scale
     return patch_points, mixture_params

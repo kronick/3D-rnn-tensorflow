@@ -1,4 +1,3 @@
-
 ## Generative Handwriting Demo using TensorFlow
 
 ![example](https://cdn.rawgit.com/hardmaru/write-rnn-tensorflow/master/svg/example.svg)
@@ -8,6 +7,9 @@
 An attempt to implement the random handwriting generation portion of Alex Graves' [paper](http://arxiv.org/abs/1308.0850).
 
 See my blog post at [blog.otoro.net](http://blog.otoro.net/2015/12/12/handwriting-generation-demo-in-tensorflow) for more information.
+
+### Dependencies
+*pyassimp / assimp*
 
 ### How to use
 

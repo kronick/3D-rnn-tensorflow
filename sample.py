@@ -21,7 +21,7 @@ parser.add_argument('--filename', type=str, default='sample',
                    help='filename of .svg file to output, without .svg')
 parser.add_argument('--sample_length', type=int, default=800,
                    help='number of strokes to sample')
-parser.add_argument('--scale_factor', type=int, default=10,
+parser.add_argument('--scale_factor', type=int, default=5,
                    help='factor to scale down by for svg output.  smaller means bigger output')
 parser.add_argument('--temperature', type=float, default=1.0,
                    help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
@@ -68,15 +68,20 @@ if sample_args.prime_index > -1:
 saver.restore(sess, ckpt.model_checkpoint_path)
 
 def sample_stroke(savefile):
-  [strokes, params] = model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_array)
-  draw_strokes(strokes, factor=sample_args.scale_factor, svg_filename = savefile) 
-  #draw_strokes_random_color(strokes, factor=sample_args.scale_factor, svg_filename = sample_args.filename+'.color.svg')
-  #draw_strokes_random_color(strokes, factor=sample_args.scale_factor, per_stroke_mode = False, svg_filename = sample_args.filename+'.multi_color.svg')
-  #draw_strokes_eos_weighted(strokes, params, factor=sample_args.scale_factor, svg_filename = sample_args.filename+'.eos_pdf.svg')
-  #draw_strokes_pdf(strokes, params, factor=sample_args.scale_factor, svg_filename = sample_args.filename+'.pdf.svg')
-  return [strokes, params]
+  [points, params] = model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_array)
+
+  with open(savefile, "w+") as f:
+    last_point = np.array([0,0,0,0])
+    for p in points:
+      print p
+      point = last_point + p
+      f.write("{} {} {}\n".format(point[0], point[1], point[2]))
+      last_point = point
+
+
+  return [points, params]
 
 for i in range(sample_args.number_sequences):
-  [strokes, params] = sample_stroke("{}-{}.svg".format(sample_args.filename, i))
+  [strokes, params] = sample_stroke("{}-{}.xyz".format(sample_args.filename, i))
 
 

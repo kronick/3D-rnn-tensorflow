@@ -16,23 +16,49 @@ class RandomWalker():
 
 
     # Calculate the vertex graph
+    self.unique_vertex_indices = {}
+    self.unique_vertices = []
     self.vertex_connections = {} # Should end up with same number of elements as self.mesh.vertices
+
+    def match_unique_vertex(p):
+      plist = tuple(p.tolist())
+
+      if plist in self.unique_vertex_indices:
+        return self.unique_vertex_indices[plist]
+
+      # No match found; add this point
+      self.unique_vertices.append(p)
+      idx = len(self.unique_vertices) - 1
+      self.unique_vertex_indices[plist] = idx
+      return idx
+
+
     for a, b, c in self.mesh.faces:
-      if not self.vertex_connections.has_key(a):
-        self.vertex_connections[a] = set()
-      if not self.vertex_connections.has_key(b):
-        self.vertex_connections[b] = set()
-      if not self.vertex_connections.has_key(c):
-        self.vertex_connections[c] = set()
+      # Get index for each point in the unique_vertices list
+      a_coords = self.mesh.vertices[a]
+      b_coords = self.mesh.vertices[b]
+      c_coords = self.mesh.vertices[c]
 
-      self.vertex_connections[a].add(b)
-      self.vertex_connections[a].add(c)
+      a_index = match_unique_vertex(a_coords)
+      b_index = match_unique_vertex(b_coords)
+      c_index = match_unique_vertex(c_coords)
+           
 
-      self.vertex_connections[b].add(a)
-      self.vertex_connections[b].add(c)
+      if not self.vertex_connections.has_key(a_index):
+        self.vertex_connections[a_index] = set()
+      if not self.vertex_connections.has_key(b_index):
+        self.vertex_connections[b_index] = set()
+      if not self.vertex_connections.has_key(c_index):
+        self.vertex_connections[c_index] = set()
 
-      self.vertex_connections[c].add(b)
-      self.vertex_connections[c].add(a)
+      self.vertex_connections[a_index].add(b_index)
+      self.vertex_connections[a_index].add(c_index)
+
+      self.vertex_connections[b_index].add(a_index)
+      self.vertex_connections[b_index].add(c_index)
+
+      self.vertex_connections[c_index].add(b_index)
+      self.vertex_connections[c_index].add(a_index)
 
     self.loaded = True
 
@@ -44,8 +70,9 @@ class RandomWalker():
 
     points_out = np.zeros((n_steps, 4))
     # Start at a random point
-    last_vertex_index = random.sample(self.mesh.faces, 1)[0][0]
-    p = self.mesh.vertices[last_vertex_index]
+    previous_vertex_index = -1
+    last_vertex_index = random.randint(0, len(self.unique_vertices)-1)
+    p = self.unique_vertices[last_vertex_index]
     last_point = np.array([p[0],p[1],p[2], 0])
     points_out[0] = np.array([0,0,0,0]) if relative else last_point
 
@@ -56,20 +83,22 @@ class RandomWalker():
         break
 
       # Choose a random next connected vertex
-      next_vertex_index = random.sample(connections, 1)[0]
-      p = self.mesh.vertices[next_vertex_index]
+      next_vertex_index = random.sample(connections - set((previous_vertex_index,)), 1)[0]
+      #print "At vertex #{} - connected to ({}) - going to #{}".format(last_vertex_index, connections, next_vertex_index)
+      p = self.unique_vertices[next_vertex_index]
       eos = 0 if (i < n_steps - 2) else 1
       next_point = np.array([p[0],p[1],p[2], eos])
       # Add either its relative or absolute position to the list
       points_out[i+1] = next_point - last_point if relative else next_point
 
+      previous_vertex_index = last_vertex_index
       last_vertex_index = next_vertex_index
       last_point = next_point
     
     return np.array(points_out)
 
 if __name__ == "__main__":
-  w = RandomWalker("/home/kronick/Desktop/meshlab samples/bunny2.ply")
-  points = w.walk(10)
-  print(points)
-  print "Shape: {}".format(points.shape)
+  w = RandomWalker("rock.obj")
+  points = w.walk(100)
+  for p in points:
+    print p

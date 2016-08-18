@@ -17,7 +17,7 @@ p7
 I256
 sS'data_scale'
 p8
-F1000
+F5
 sS'learning_rate'
 p9
 F0.0050000000000000001
@@ -38,11 +38,11 @@ p14
 I20
 sS'mesh_filename'
 p15
-S'/home/kronick/Desktop/meshlab samples/bunny2.ply'
+S'Laurana50k.ply'
 p16
 sS'num_training_samples'
 p17
-I10000
+I100000
 sS'num_layers'
 p18
 I2

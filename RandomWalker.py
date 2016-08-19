@@ -1,6 +1,7 @@
 import pyassimp
 import random
 import numpy as np
+import math
 
 class RandomWalker():
   loaded = False
@@ -62,11 +63,42 @@ class RandomWalker():
 
     self.loaded = True
 
+  def get_smoothest_index(self, curr_point, prev_point, connections):
+    A = curr_point - prev_point
+    
+    A = np.array([A[0], A[1], A[2]])
+    mag_A = math.sqrt(A[0]*A[0] + A[1]*A[1] + A[2]*A[2])
+    A /= mag_A
 
-  def walk(self, n_steps, relative = True):
+
+    max_angle = 0
+    max_idx = 0
+    max_dot = 0
+    n = -1
+    for i, c in enumerate(connections):
+      p = self.unique_vertices[c]
+      B = curr_point - p
+      mag_B = math.sqrt(B[0]*B[0] + B[1]*B[1] + B[2]*B[2])
+      B /= mag_B
+
+      dot = (B[0] * A[0] + B[1] * A[1] + B[2] * A[2])
+      angle = math.acos(dot)
+      if angle > max_angle:
+
+        max_angle = angle
+        max_idx = c
+        n = i
+
+    print max_idx
+    return max_idx
+
+
+  def walk(self, n_steps, relative = True, smooth = 0):
     """ Randomly walk from point to point on the mesh, starting at a random point """
     if not self.loaded:
        return []
+
+    smooth = min(smooth, 1.0)
 
     points_out = np.zeros((n_steps, 4))
     # Start at a random point
@@ -83,7 +115,10 @@ class RandomWalker():
         break
 
       # Choose a random next connected vertex
-      next_vertex_index = random.sample(connections - set((previous_vertex_index,)), 1)[0]
+      if random.random() > 1.0 - smooth:
+        next_vertex_index = self.get_smoothest_index(self.unique_vertices[last_vertex_index], self.unique_vertices[previous_vertex_index], connections - set((previous_vertex_index,)))
+      else:
+        next_vertex_index = random.sample(connections - set((previous_vertex_index,)), 1)[0]
       #print "At vertex #{} - connected to ({}) - going to #{}".format(last_vertex_index, connections, next_vertex_index)
       p = self.unique_vertices[next_vertex_index]
       eos = 0 if (i < n_steps - 2) else 1

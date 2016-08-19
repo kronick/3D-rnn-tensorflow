@@ -78,7 +78,7 @@ def train(args):
     with open("train.xyz", "w+") as f:
       last_point = np.array([0,0,0,0])
       for t in training_data:
-        p = last_point + t if relative else t
+        p = last_point + t if args.relative else t
         f.write("{} {} {}\n".format(p[0], p[1], p[2]))
         last_point = p
     print "Training data saved."

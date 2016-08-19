@@ -89,7 +89,6 @@ class RandomWalker():
         max_idx = c
         n = i
 
-    print max_idx
     return max_idx
 
 

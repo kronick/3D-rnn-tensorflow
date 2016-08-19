@@ -46,9 +46,20 @@ def main():
                      help='name mesh to use for training data')
   parser.add_argument('--relative', type=bool, default=True,
                      help='Use relative (default) rather than absolute coordinates')
-
+  parser.add_argument('--use_checkpoint', type=str, default=None,
+                     help='Continue training from a previously saved checkpoint')
   args = parser.parse_args()
-  train(args)
+
+
+  if args.use_checkpoint is not None:
+    checkpoint_dir = args.use_checkpoint
+    with open(os.path.join(args.use_checkpoint, 'config.pkl')) as f:
+      saved_args = cPickle.load(f)
+      saved_args.use_checkpoint = checkpoint_dir
+
+    train(saved_args)
+  else:
+    train(args)
 
 def synthesize_training_data(args):
   # Load mesh walker
@@ -83,16 +94,24 @@ def train(args):
         last_point = p
     print "Training data saved."
 
-    with open(os.path.join('save', 'config.pkl'), 'w') as f:
+    with open(os.path.join('save' if args.use_checkpoint is None else args.use_checkpoint, 'config.pkl'), 'w') as f:
         cPickle.dump(args, f)
 
     model = Model(args)
 
     num_batches = args.num_training_samples / args.batch_size
 
+    
+
     with tf.Session() as sess:
+
         tf.initialize_all_variables().run()
-        saver = tf.train.Saver(tf.all_variables())
+        saver = tf.train.Saver(tf.all_variables(), max_to_keep = 0)
+        
+        if args.use_checkpoint is not None:
+          ckpt = tf.train.get_checkpoint_state(args.use_checkpoint)
+          saver.restore(sess, ckpt.model_checkpoint_path)
+
         for e in xrange(args.num_epochs):
             sess.run(tf.assign(model.lr, args.learning_rate * (args.decay_rate ** e)))
             state = model.initial_state.eval()

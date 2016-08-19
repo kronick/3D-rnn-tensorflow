@@ -75,7 +75,7 @@ def sample_stroke(savefile):
   with open(savefile, "w+") as f:
     last_point = np.array([0,0,0,0])
     for p in points:
-      point = last_point + p if args.relative else p
+      point = (last_point + p) if sample_args.relative else p
       f.write("{} {} {}\n".format(point[0], point[1], point[2]))
       last_point = point
 

@@ -31,6 +31,8 @@ parser.add_argument('--prime_sequence_length', type=int, default=1,
                    help='number of stroke sequences use in priming')
 parser.add_argument("--number_sequences", type=int, default=1,
                    help='number of writing sequences to generate')
+parser.add_argument("--relative", type=bool, default=True,
+                   help='Use relative coordinates (default) instead of absolute. Must match with setting on trained checkpoint.')
 sample_args = parser.parse_args()
 
 with open(os.path.join('save', 'config.pkl')) as f:
@@ -73,7 +75,7 @@ def sample_stroke(savefile):
   with open(savefile, "w+") as f:
     last_point = np.array([0,0,0,0])
     for p in points:
-      point = last_point + p
+      point = last_point + p if args.relative else p
       f.write("{} {} {}\n".format(point[0], point[1], point[2]))
       last_point = point
 

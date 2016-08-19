@@ -44,12 +44,15 @@ def main():
                      help='dropout keep probability')
   parser.add_argument('--mesh_filename', type=str, default="mesh.obj",
                      help='name mesh to use for training data')
+  parser.add_argument('--relative', type=bool, default=True,
+                     help='Use relative (default) rather than absolute coordinates')
+
   args = parser.parse_args()
   train(args)
 
 def synthesize_training_data(args):
   # Load mesh walker
-  walker = RandomWalker(args.mesh_filename)
+  walker = RandomWalker(args.mesh_filename, args.relative, smooth = 0.8)
   num_batches = args.num_training_samples / args.batch_size
   n_samples = num_batches * args.batch_size
   training_data = walker.walk(n_samples)
@@ -69,12 +72,22 @@ def get_random_batch(data, args):
   return (x_batch, y_batch)
 
 def train(args):
+
+    training_data = synthesize_training_data(args)
+
+    with open("train.xyz", "w+") as f:
+      last_point = np.array([0,0,0,0])
+      for t in training_data:
+        p = last_point + t if relative else t
+        f.write("{} {} {}\n".format(p[0], p[1], p[2]))
+        last_point = p
+    print "Training data saved."
+
     with open(os.path.join('save', 'config.pkl'), 'w') as f:
         cPickle.dump(args, f)
 
     model = Model(args)
 
-    training_data = synthesize_training_data(args)
     num_batches = args.num_training_samples / args.batch_size
 
     with tf.Session() as sess:

@@ -111,7 +111,7 @@ def train(args):
         p = last_point + t if args.relative else t
         f.write("{} {} {}\n".format(p[0], p[1], p[2]))
         last_point = p
-    print "Training data saved."
+    print "Training data saved ({} points).".format(len(training_data))
 
     with open(os.path.join('save' if args.use_checkpoint is None else args.use_checkpoint, 'config.pkl'), 'w') as f:
         cPickle.dump(args, f)

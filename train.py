@@ -44,22 +44,41 @@ def main():
                      help='dropout keep probability')
   parser.add_argument('--mesh_filename', type=str, default="mesh.obj",
                      help='name mesh to use for training data')
-  parser.add_argument('--relative', type=bool, default=True,
-                     help='Use relative (default) rather than absolute coordinates')
+  
+  relative_parser = parser.add_mutually_exclusive_group(required=False)
+  relative_parser.add_argument('--relative', dest='relative', action='store_true')
+  relative_parser.add_argument('--absolute', dest='relative', action='store_false')
+  parser.set_defaults(relative=True)
+
   parser.add_argument('--use_checkpoint', type=str, default=None,
                      help='Continue training from a previously saved checkpoint')
+
+
+  device_parser = parser.add_mutually_exclusive_group(required=False)
+  device_parser.add_argument('--gpu', dest='gpu', action='store_true')
+  device_parser.add_argument('--cpu', dest='gpu', action='store_false')
+  parser.set_defaults(gpu=True)
+
   args = parser.parse_args()
 
+  device = None if args.gpu is True else '/cpu:0'
 
-  if args.use_checkpoint is not None:
-    checkpoint_dir = args.use_checkpoint
-    with open(os.path.join(args.use_checkpoint, 'config.pkl')) as f:
-      saved_args = cPickle.load(f)
-      saved_args.use_checkpoint = checkpoint_dir
-
-    train(saved_args)
+  if args.relative:
+    print "Using relative coordinates."
   else:
-    train(args)
+    print "Using absolute coordinates."
+
+  with tf.device(device):
+    print("Using device {}".format(device))
+    if args.use_checkpoint is not None:
+      checkpoint_dir = args.use_checkpoint
+      with open(os.path.join(args.use_checkpoint, 'config.pkl')) as f:
+        saved_args = cPickle.load(f)
+        saved_args.use_checkpoint = checkpoint_dir
+
+      train(saved_args)
+    else:
+      train(args)
 
 def synthesize_training_data(args):
   # Load mesh walker
@@ -97,6 +116,7 @@ def train(args):
     with open(os.path.join('save' if args.use_checkpoint is None else args.use_checkpoint, 'config.pkl'), 'w') as f:
         cPickle.dump(args, f)
 
+    
     model = Model(args)
 
     num_batches = args.num_training_samples / args.batch_size

@@ -31,8 +31,12 @@ parser.add_argument('--prime_sequence_length', type=int, default=1,
                    help='number of stroke sequences use in priming')
 parser.add_argument("--number_sequences", type=int, default=1,
                    help='number of writing sequences to generate')
-parser.add_argument("--relative", type=bool, default=True,
-                   help='Use relative coordinates (default) instead of absolute. Must match with setting on trained checkpoint.')
+
+relative_parser = parser.add_mutually_exclusive_group(required=False)
+relative_parser.add_argument('--relative', dest='relative', action='store_true')
+relative_parser.add_argument('--absolute', dest='relative', action='store_false')
+parser.set_defaults(relative=True)
+
 sample_args = parser.parse_args()
 
 with open(os.path.join('save', 'config.pkl')) as f:

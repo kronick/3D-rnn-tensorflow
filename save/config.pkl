@@ -17,7 +17,7 @@ p7
 I00
 sS'rnn_size'
 p8
-I64
+I1024
 sS'data_scale'
 p9
 F500
@@ -25,7 +25,7 @@ sS'use_checkpoint'
 p10
 NsS'learning_rate'
 p11
-F0.0050000000000000001
+F0.0080000000000000002
 sS'num_epochs'
 p12
 I10
@@ -34,7 +34,7 @@ p13
 I100
 sS'batch_size'
 p14
-I5
+I10
 sS'decay_rate'
 p15
 F0.94999999999999996
@@ -50,10 +50,10 @@ p19
 I50000
 sS'num_layers'
 p20
-I3
+I2
 sS'gpu'
 p21
-I01
+I00
 sS'model'
 p22
 S'lstm'

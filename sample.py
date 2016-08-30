@@ -25,17 +25,13 @@ parser.add_argument('--scale_factor', type=int, default=5,
                    help='factor to scale down by for svg output.  smaller means bigger output')
 parser.add_argument('--temperature', type=float, default=1.0,
                    help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
-parser.add_argument('--prime_index', type=int, default=-1,
-                   help='prime sequence generation with a values from a training sample')
-parser.add_argument('--prime_sequence_length', type=int, default=1,
-                   help='number of stroke sequences use in priming')
 parser.add_argument("--number_sequences", type=int, default=1,
                    help='number of writing sequences to generate')
 
 relative_parser = parser.add_mutually_exclusive_group(required=False)
 relative_parser.add_argument('--relative', dest='relative', action='store_true')
 relative_parser.add_argument('--absolute', dest='relative', action='store_false')
-parser.set_defaults(relative=True)
+parser.set_defaults(relative=False)
 
 sample_args = parser.parse_args()
 
@@ -49,44 +45,30 @@ saver = tf.train.Saver(tf.all_variables())
 ckpt = tf.train.get_checkpoint_state('save')
 print "loading model: ",ckpt.model_checkpoint_path
 
-# Load training data if we want to prime with a past sequence
-prime_array = None
-if sample_args.prime_index > -1:
-  batch_size = 50
-  seq_length = 300
-  data_scale = 20
-  data_loader = DataLoader(batch_size, seq_length, data_scale)
-  prime_array = []
-  for i in range(sample_args.prime_sequence_length):
-    training_data_sequence = data_loader.get_stroke_sequence_array(sample_args.prime_index + i)
-    if training_data_sequence is None:
-      print "WARNING: prime_index out of bounds! Not using a priming sequence."
-      break
-
-    if len(prime_array) > 0:
-      prime_array = np.concatenate([prime_array, training_data_sequence])
-    else:
-      prime_array = training_data_sequence
-
-  print "Priming with sequence of length {}".format(len(prime_array))
-
-
 saver.restore(sess, ckpt.model_checkpoint_path)
 
 def sample_stroke(savefile):
-  [points, params] = model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_array)
+  points = model.sample(sess, sample_args.sample_length,sample_args.temperature)
 
   with open(savefile, "w+") as f:
-    last_point = np.array([0,0,0,0])
-    for p in points:
-      point = (last_point + p) if sample_args.relative else p
-      f.write("{} {} {}\n".format(point[0], point[1], point[2]))
-      last_point = point
+    with open(savefile + ".json", "w+") as jsonfile:
+      jsonfile.write("pathPoints = [\n")
 
+      last_point = np.array([0,0,0,0,0,0,0])
+      for i, p in enumerate(points):
+        if sample_args.relative:
+          p[0:3] += last_point[0:3]
+        
+        f.write("{} {} {} {} {} {}\n".format(p[0], p[1], p[2], p[4], p[5], p[6]))
+        jsonfile.write("\t[{}, {}, {}, {}, {}, {}]{}\n".format(p[0], p[1], p[2], p[4], p[5], p[6], ',' if i < len(points) else ''))
 
-  return [points, params]
+        last_point = p
+
+      jsonfile.write("];")
+
+  return points
 
 for i in range(sample_args.number_sequences):
-  [strokes, params] = sample_stroke("{}-{}.xyz".format(sample_args.filename, i))
+  strokes = sample_stroke("{}-{}.xyz".format(sample_args.filename, i))
 
 

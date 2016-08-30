@@ -37,7 +37,9 @@ def main():
   parser.add_argument('--decay_rate', type=float, default=0.95,
                      help='decay rate for rmsprop')
   parser.add_argument('--num_mixture', type=int, default=20,
-                     help='number of gaussian mixtures')
+                     help='number of gaussian mixtures for modeling vertex positions')
+  parser.add_argument('--num_mixture_normals', type=int, default=5,
+                     help='number of gaussian mixtures for modeling vertext normals')
   parser.add_argument('--data_scale', type=float, default=100,
                      help='factor to scale raw data up by')
   parser.add_argument('--keep_prob', type=float, default=0.8,
@@ -48,7 +50,7 @@ def main():
   relative_parser = parser.add_mutually_exclusive_group(required=False)
   relative_parser.add_argument('--relative', dest='relative', action='store_true')
   relative_parser.add_argument('--absolute', dest='relative', action='store_false')
-  parser.set_defaults(relative=True)
+  parser.set_defaults(relative=False)
 
   parser.add_argument('--use_checkpoint', type=str, default=None,
                      help='Continue training from a previously saved checkpoint')
@@ -108,9 +110,11 @@ def train(args):
     with open("train.xyz", "w+") as f:
       last_point = np.array([0,0,0,0])
       for t in training_data:
-        p = last_point + t if args.relative else t
-        f.write("{} {} {}\n".format(p[0], p[1], p[2]))
-        last_point = p
+        if args.relative:
+          t[0:3] += last_point[0:3]
+
+        f.write("{} {} {} {} {} {}\n".format(t[0], t[1], t[2], t[4], t[5], t[6]))
+        last_point = t
     print "Training data saved ({} points).".format(len(training_data))
 
     with open(os.path.join('save' if args.use_checkpoint is None else args.use_checkpoint, 'config.pkl'), 'w') as f:
@@ -120,8 +124,6 @@ def train(args):
     model = Model(args)
 
     num_batches = args.num_training_samples / args.batch_size
-
-    
 
     with tf.Session() as sess:
 

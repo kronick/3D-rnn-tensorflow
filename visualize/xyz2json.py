@@ -18,6 +18,6 @@ with open(args.i, "r") as infile:
             points.append(point)
                 
         for i, p in enumerate(points):
-            outfile.write("\t[{}, {}, {}]{}\n".format(p[0], p[1], p[2], ',' if i < len(points) else ''))
+            outfile.write("\t[{}, {}, {}, {}, {}, {}]{}\n".format(p[0], p[1], p[2], p[3], p[4], p[5], ',' if i < len(points) else ''))
 
         outfile.write("];")

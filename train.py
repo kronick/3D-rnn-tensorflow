@@ -46,6 +46,8 @@ def main():
                      help='dropout keep probability')
   parser.add_argument('--mesh_filename', type=str, default="mesh.obj",
                      help='name mesh to use for training data')
+  parser.add_argument('--smooth', type=float, default=0.8,
+                     help='Amount to smooth random walk used to generate training data')
   
   relative_parser = parser.add_mutually_exclusive_group(required=False)
   relative_parser.add_argument('--relative', dest='relative', action='store_true')
@@ -87,7 +89,7 @@ def synthesize_training_data(args):
   walker = RandomWalker(args.mesh_filename)
   num_batches = args.num_training_samples / args.batch_size
   n_samples = num_batches * args.batch_size
-  training_data = walker.walk(n_samples, args.relative, smooth = 0.8)
+  training_data = walker.walk(n_samples, args.relative, smooth = args.smooth)
   training_data[:,0:3] *= args.data_scale
 
   return training_data

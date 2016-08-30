@@ -98,10 +98,27 @@ def get_random_batch(data, args):
   x_batch = []
   y_batch = []
 
+  np.set_printoptions(precision=4, suppress=True)
   for i in xrange(args.batch_size):
     idx = random.randint(0, len(data)-args.seq_length-2)
-    x_batch.append(np.copy(data[idx:idx+args.seq_length]))
-    y_batch.append(np.copy(data[idx+1:idx+args.seq_length+1]))
+    anchor = data[idx]
+    anchor = np.concatenate((anchor[0:3], anchor[4:7])) # Get rid of end of stroke flag from anchor point and keep only XYZ and vertex normal
+    
+    # Get the raw training data for this batch
+    X = np.copy(data[idx:idx+args.seq_length])
+    Y = np.copy(data[idx+1:idx+args.seq_length+1])
+
+    # Subtract anchor point from training data to convert to local relative coordinate system
+    X[:,0:3] -= anchor[0:3]
+    # Also concat the anchor point to the begining of the training data
+    X = np.array([np.concatenate((anchor,p)) for p in X])
+
+    # Convert target data to local relative coordinate system too
+    # Don't need to concat the anchor point because we don't want to predict that
+    Y[:,0:3] -= anchor[0:3]
+
+    x_batch.append(X)
+    y_batch.append(Y)
 
   return (x_batch, y_batch)
 

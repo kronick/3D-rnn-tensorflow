@@ -31,7 +31,7 @@ class Model():
 
     self.cell = cell
 
-    self.input_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, 2 * self.COORDINATE_DIMENSIONS + 1])
+    self.input_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, 4 * self.COORDINATE_DIMENSIONS + 1])
     self.target_data = tf.placeholder(dtype=tf.float32, shape=[None, args.seq_length, 2 * self.COORDINATE_DIMENSIONS + 1])
     self.initial_state = cell.zero_state(batch_size=args.batch_size, dtype=tf.float32)
 

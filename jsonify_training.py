@@ -2,14 +2,19 @@ import numpy as np
 from RandomWalker import RandomWalker
 
 walker = RandomWalker("bunny2.ply")
-points = walker.walk(10000, smooth = 0.8)
+points = walker.walk(10000, relative = False, smooth = 0.8)
 
-with open("walk.js", "w+") as f:
+SCALE = 100
+
+with open("visualize/walk.js", "w+") as f:
     f.write("pathPoints = [\n")
-    last_point = np.array([0,0,0,0])
+
+    points[:,0:3] *= SCALE
     for i, p in enumerate(points):
-        _p = last_point + p
-        f.write("\t[{}, {}, {}]{}\n".format(_p[0], _p[1], _p[2], ',' if i < len(points) else ''))
-        last_point = _p
+        f.write("\t[{}, {}, {}, {}, {}, {}]{}\n".format(p[0], p[1], p[2], p[4], p[5], p[6], ',' if i < len(points) else ''))
+
+        norm = np.array((p[4],p[5],p[6]))
+        mag = np.sqrt(norm.dot(norm))
+        #print mag
 
     f.write("];")

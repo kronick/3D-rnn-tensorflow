@@ -10,18 +10,19 @@
     <script src="js/three.js"></script>
     <script src="js/OBJLoader.js"></script>
     <script src="js/TrackballControls.js"></script>
-    <script src="scaffold-cube-0.xyz.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
+    <script src="train.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
 <script>
-    draw_normals = true;
-    draw_points = true;
+    draw_normals = false;
+    draw_points = false;
     draw_lines = true;
+    steps_per_frame = 100;
 
-    vertex_scale = 100;
+    vertex_scale = 0.01;
     normal_scale = 0.3;
 
     //var model_file = "models/untitled.obj"
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
     var renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setClearColor(0x444444);
 
@@ -76,35 +77,41 @@
         //requestAnimationFrame(render);
         renderer.render(scene, camera);
 
-        // Add another line to the visualization
-        var idx = pathGeo.vertices.length
+        scene.remove(pathLine);
+        scene.remove(pathPointcloud);
 
-        if(idx < pathPoints.length) {
-            scene.remove(pathLine);
-            var p = new THREE.Vector3(pathPoints[idx][0], pathPoints[idx][1], pathPoints[idx][2]);
-            p.multiplyScalar(vertex_scale);
-            pathGeo.vertices.push(p);
-            pathGeo = pathGeo.clone();
-            pathLine = new THREE.Line(pathGeo, lineMaterial);
-            scene.add(pathLine);
+        for(var i=0; i<steps_per_frame; i++) {
+            // Add another line to the visualization
+            var idx = pathGeo.vertices.length
 
-            if(draw_points) {
-                scene.remove(pathPointcloud);
-                pointsGeo = pathGeo.clone();
-                pathPointcloud = new THREE.Points(pathGeo, pointsMaterial);
-                scene.add(pathPointcloud);
-            }
-            if(draw_normals) {
-                var n = new THREE.Vector3(pathPoints[idx][3], pathPoints[idx][4], pathPoints[idx][5]);
-                n.multiplyScalar(normal_scale);
-                normalGeo = new THREE.Geometry();
-                normalGeo.vertices.push(p);
-                normalGeo.vertices.push(new THREE.Vector3().addVectors(p, n));
-                normalLine = new THREE.Line(normalGeo, normalMaterial);
-                scene.add(normalLine);
+            if(idx < pathPoints.length) {
+                
+                var p = new THREE.Vector3(pathPoints[idx][0], pathPoints[idx][1], pathPoints[idx][2]);
+                p.multiplyScalar(vertex_scale);
+                pathGeo.vertices.push(p);
+                pathGeo = pathGeo.clone();
+                pathLine = new THREE.Line(pathGeo, lineMaterial);
+
+                if(draw_points) {
+                    
+                    pointsGeo = pathGeo.clone();
+                    pathPointcloud = new THREE.Points(pathGeo, pointsMaterial);
+                    
+                }
+                if(draw_normals) {
+                    var n = new THREE.Vector3(pathPoints[idx][3], pathPoints[idx][4], pathPoints[idx][5]);
+                    n.multiplyScalar(normal_scale);
+                    normalGeo = new THREE.Geometry();
+                    normalGeo.vertices.push(p);
+                    normalGeo.vertices.push(new THREE.Vector3().addVectors(p, n));
+                    normalLine = new THREE.Line(normalGeo, normalMaterial);
+                    scene.add(normalLine);
+                }
             }
         }
 
+        scene.add(pathLine);
+        scene.add(pathPointcloud);
         //lastWalkStepTime = clock.getElapsedTime();
 
         

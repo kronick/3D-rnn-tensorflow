@@ -17,10 +17,10 @@ p7
 I00
 sS'rnn_size'
 p8
-I512
+I128
 sS'data_scale'
 p9
-F500
+F100
 sS'use_checkpoint'
 p10
 NsS'learning_rate'
@@ -28,16 +28,16 @@ p11
 F0.0050000000000000001
 sS'num_epochs'
 p12
-I10
+I50
 sS'smooth'
 p13
 F0.40000000000000002
 sS'seq_length'
 p14
-I100
+I200
 sS'batch_size'
 p15
-I50
+I500
 sS'decay_rate'
 p16
 F0.94999999999999996
@@ -46,11 +46,11 @@ p17
 I20
 sS'mesh_filename'
 p18
-S'/home/kronick/Desktop/meshlab samples/bunny2.ply'
+S'rock.obj'
 p19
 sS'num_training_samples'
 p20
-I50000
+I500000
 sS'num_layers'
 p21
 I2

@@ -10,6 +10,7 @@ from utils import *
 from model import Model
 import random
 
+import math
 
 import svgwrite
 from IPython.display import SVG, display
@@ -27,6 +28,9 @@ parser.add_argument('--temperature', type=float, default=1.0,
                    help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
 parser.add_argument("--number_sequences", type=int, default=1,
                    help='number of writing sequences to generate')
+parser.add_argument("--scaffold_file", type=str, default='scaffold_zeros.xyz',
+                   help='File listing a sequence of points in .XYZ format that the sampler will feed as a scaffold or envelope to follow while generating new points')
+parser.add_argument("--scaffold_scale", type=float, default=1.0, help='Scale factor for scaffolding coordinates')
 
 relative_parser = parser.add_mutually_exclusive_group(required=False)
 relative_parser.add_argument('--relative', dest='relative', action='store_true')
@@ -47,8 +51,16 @@ print "loading model: ",ckpt.model_checkpoint_path
 
 saver.restore(sess, ckpt.model_checkpoint_path)
 
+# Get points from scaffold file
+scaffold_points = [np.array([float(n) for n in line.strip().split(" ")]) for line in open(sample_args.scaffold_file)]
+scaffold_copies = math.ceil(float(sample_args.sample_length) / len(scaffold_points)) # Calculate how many times we need to repeat the scaffold to fit the number of samples we want
+scaffold_copies = max(1, scaffold_copies)
+scaffold_points = np.repeat(scaffold_points, scaffold_copies, axis=0)
+scaffold_points[:,0:3] *= sample_args.scaffold_scale
+
+
 def sample_stroke(savefile):
-  points = model.sample(sess, sample_args.sample_length,sample_args.temperature)
+  points = model.sample(sess, sample_args.sample_length,sample_args.temperature, scaffold=scaffold_points)
 
   with open(savefile, "w+") as f:
     with open(savefile + ".json", "w+") as jsonfile:

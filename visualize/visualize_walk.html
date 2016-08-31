@@ -10,9 +10,12 @@
     <script src="js/three.js"></script>
     <script src="js/OBJLoader.js"></script>
     <script src="js/TrackballControls.js"></script>
-    <script src="normals-temp0.4-0.xyz.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
+    <script src="scaffold-cube-0.xyz.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
 <script>
     draw_normals = true;
+    draw_points = true;
+    draw_lines = true;
+
     vertex_scale = 100;
     normal_scale = 0.3;
 
@@ -26,18 +29,22 @@
     var pathLine = new THREE.Line(pathGeo);
     scene.add(pathLine);
 
+    var pointsGeo  = new THREE.Geometry();
+    var pathPointcloud = new THREE.Points(pointsGeo);
+    scene.add(pathPointcloud);
+
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00FF00 });
-    lineMaterial.opacity = 0.3;
+    lineMaterial.opacity = draw_lines ? 0.3 : 0;
     lineMaterial.transparent = true;
 
     var normalMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF });
     normalMaterial.opacity = 0.3;
     normalMaterial.transparent = true;
 
-    var pointsMaterial = new THREE.PointsMaterial({ color: 0x00FF00, size: 0.01 });
+    var pointsMaterial = new THREE.PointsMaterial({ color: 0x00FFFF, size: 0.1 });
     
     var material = new THREE.MeshPhongMaterial({color: 0xFFFFFF, specular: 0xFFFFFF, shininess: 20, morphTargets: true, vertexColors: THREE.FaceColors, shading: THREE.SmoothShading });
 
@@ -81,6 +88,12 @@
             pathLine = new THREE.Line(pathGeo, lineMaterial);
             scene.add(pathLine);
 
+            if(draw_points) {
+                scene.remove(pathPointcloud);
+                pointsGeo = pathGeo.clone();
+                pathPointcloud = new THREE.Points(pathGeo, pointsMaterial);
+                scene.add(pathPointcloud);
+            }
             if(draw_normals) {
                 var n = new THREE.Vector3(pathPoints[idx][3], pathPoints[idx][4], pathPoints[idx][5]);
                 n.multiplyScalar(normal_scale);

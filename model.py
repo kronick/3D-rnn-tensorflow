@@ -155,7 +155,7 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None):
+  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, scaffold = None):
 
     def get_pi_idx(x, pdf):
       """ Used to choose a random component from the weighted set of gaussian mixtures
@@ -187,7 +187,15 @@ class Model():
 
     for i in xrange(sequence_length):
       # Each time step
-      feed = {self.input_data: prev_x, self.initial_state:prev_state}
+
+      # Grab the anchor point from the scaffold, or calculate it if none is provided
+      # TODO: Calculate anchor if no scaffold is provided
+      anchor = scaffold[i]
+      #prev_x[0:3] -= anchor[0:3] # Convert to local coordinate system
+      
+      feed_X = np.concatenate((anchor, prev_x[0][0])).reshape((1,1,-1))
+
+      feed = {self.input_data: feed_X, self.initial_state:prev_state}
 
       # Get new output based on previous step
       [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, o_pi_normals, o_mu1_normals, o_mu2_normals, o_mu3_normals, o_sigma_normals, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.pi_normals, self.mu1_normals, self.mu2_normals, self.mu3_normals, self.sigma_normals, self.final_state],feed)
@@ -208,7 +216,8 @@ class Model():
       sig1 = sig2 = sig3 = scale_sigma * o_sigma_normals[0][idx]
       next_n1, next_n2, next_n3 = sample_gaussian_3d(o_mu1_normals[0][idx], o_mu2_normals[0][idx], o_mu3_normals[0][idx], sig1, sig2, sig3)
 
-      patch_points[i,:] = [next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3]
+      # Add anchor point back to output points in world coordinate system
+      patch_points[i,:] = [anchor[0] + next_x1, anchor[1] + next_x2, anchor[2] + next_x3, eos, next_n1, next_n2, next_n3]
 
       prev_x = np.zeros((1, 1, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
       prev_x[0][0] = np.array([next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3], dtype=np.float32)

@@ -104,6 +104,7 @@ class RandomWalker():
       B /= mag_B
 
       dot = (B[0] * A[0] + B[1] * A[1] + B[2] * A[2])
+      dot = min(dot, 1)
       angle = math.acos(dot)
       if angle > max_angle:
 

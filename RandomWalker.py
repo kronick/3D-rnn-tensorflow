@@ -20,6 +20,9 @@ class RandomWalker():
     self.unique_vertex_indices = {}
     self.unique_vertices = []
     self.vertex_connections = {} # Should end up with same number of elements as self.mesh.vertices
+    
+    _face_normals = {}    # Indexed by vertex
+    self.vertex_normals = {}  # Average of face normals
 
     def match_unique_vertex(p):
       plist = tuple(p.tolist())
@@ -31,8 +34,8 @@ class RandomWalker():
       self.unique_vertices.append(p)
       idx = len(self.unique_vertices) - 1
       self.unique_vertex_indices[plist] = idx
+      _face_normals[idx] = []
       return idx
-
 
     for a, b, c in self.mesh.faces:
       # Get index for each point in the unique_vertices list
@@ -60,6 +63,25 @@ class RandomWalker():
 
       self.vertex_connections[c_index].add(b_index)
       self.vertex_connections[c_index].add(a_index)
+
+      # Calculate face normal and append to each point
+      I = b_coords - a_coords # Get vectors on the face
+      J = c_coords - a_coords
+      cross = np.cross(I, J)  # Cross product gives vector perpendicular to face
+      mag = np.sqrt(cross.dot(cross)) # Calculate magnitude
+      norm = cross / mag # Normalize the cross product perpendicular vector to get face normal
+  
+      _face_normals[a_index].append(norm)
+      _face_normals[b_index].append(norm)
+      _face_normals[c_index].append(norm)
+
+    # Average face normals to get vertex normals
+    for idx, norms in _face_normals.iteritems():
+      S = np.sum(norms, 0)
+      avg = S / len(norms)
+      mag = np.sqrt(avg.dot(avg))
+      avg /= mag
+      self.vertex_normals[idx] = avg
 
     self.loaded = True
 
@@ -94,7 +116,6 @@ class RandomWalker():
 
     return max_idx
 
-
   def walk(self, n_steps, relative = True, smooth = 0):
     """ Randomly walk from point to point on the mesh, starting at a random point """
     if not self.loaded:
@@ -103,12 +124,15 @@ class RandomWalker():
     smooth = min(smooth, 1.0)
 
     points_out = np.zeros((n_steps, 4))
+    normals_out = np.zeros((n_steps, 3))
+
     # Start at a random point
     previous_vertex_index = -1
     last_vertex_index = random.randint(0, len(self.unique_vertices)-1)
     p = self.unique_vertices[last_vertex_index]
     last_point = np.array([p[0],p[1],p[2], 0])
     points_out[0] = np.array([0,0,0,0]) if relative else last_point
+    normals_out[0] = self.vertex_normals[last_vertex_index]
 
     for i in xrange(n_steps-1):
       # Get vertex connections
@@ -127,12 +151,14 @@ class RandomWalker():
       next_point = np.array([p[0],p[1],p[2], eos])
       # Add either its relative or absolute position to the list
       points_out[i+1] = next_point - last_point if relative else next_point
+      normals_out[i+1] = self.vertex_normals[next_vertex_index]
 
       previous_vertex_index = last_vertex_index
       last_vertex_index = next_vertex_index
       last_point = next_point
     
-    return np.array(points_out)
+    #return np.array(points_out)
+    return np.concatenate((points_out,normals_out), axis=1) # Return array with points and normals concatenated -- shape is (n_steps, 7)
 
 if __name__ == "__main__":
   w = RandomWalker("rock.obj")

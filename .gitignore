@@ -1,3 +1,5 @@
 save/*
 .DS_Store
 *.xyz
+visualize/*.json
+

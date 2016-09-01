@@ -1,0 +1,133 @@
+<!doctype html>
+<head>
+    <meta charset="utf-8">
+    <style>
+    body { margin: 0; }
+    canvas { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <script src="js/three.js"></script>
+    <script src="js/OBJLoader.js"></script>
+    <script src="js/TrackballControls.js"></script>
+    <script src="rockobj-0.xyz.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
+<script>
+    draw_normals = true;
+    draw_points = true;
+    draw_lines = false;
+    steps_per_frame = 100;
+
+    vertex_scale = 1;
+    normal_scale = 0.3;
+
+    //var model_file = "models/untitled.obj"
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    var renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setClearColor(0x444444);
+
+    var pathGeo  = new THREE.Geometry();
+    var pathLine = new THREE.Line(pathGeo);
+    scene.add(pathLine);
+
+    var pointsGeo  = new THREE.Geometry();
+    var pathPointcloud = new THREE.Points(pointsGeo);
+    scene.add(pathPointcloud);
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00FF00 });
+    lineMaterial.opacity = draw_lines ? 0.3 : 0;
+    lineMaterial.transparent = true;
+
+    var normalMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF });
+    normalMaterial.opacity = 0.3;
+    normalMaterial.transparent = true;
+
+    var pointsMaterial = new THREE.PointsMaterial({ color: 0x00FFFF, size: 0.1 });
+    
+    var material = new THREE.MeshPhongMaterial({color: 0xFFFFFF, specular: 0xFFFFFF, shininess: 20, morphTargets: true, vertexColors: THREE.FaceColors, shading: THREE.SmoothShading });
+
+    // Set up camera and controls
+    camera.position.z = 5;
+    controls = new THREE.TrackballControls(camera);
+    controls.addEventListener('change', render);
+    controls.rotateSpeed = 2.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.3;
+    controls.noZoom = false;
+    controls.noPan = false;
+    controls.keys = [ 65, 83, 68 ];
+    controls.staticMoving = false;
+    controls.dynamicDampingFactor = 0.1;
+
+    hemiLight = new THREE.HemisphereLight( 0xffffff, 0xddddff, 1.0 );
+    hemiLight.color.setRGB( 1.0, 1.0, 1.0 );
+    hemiLight.groundColor.setRGB( 0.5, 0.5, 1.0 );
+    hemiLight.position.set( 25, 50, 0 );
+    scene.add( hemiLight );
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        render();
+    }
+    function render() {
+        //requestAnimationFrame(render);
+        renderer.render(scene, camera);
+
+        scene.remove(pathLine);
+        scene.remove(pathPointcloud);
+
+        for(var i=0; i<steps_per_frame; i++) {
+            // Add another line to the visualization
+            var idx = pathGeo.vertices.length
+
+            if(idx < pathPoints.length) {
+                
+                var p = new THREE.Vector3(pathPoints[idx][0], pathPoints[idx][1], pathPoints[idx][2]);
+                p.multiplyScalar(vertex_scale);
+                pathGeo.vertices.push(p);
+                pathGeo = pathGeo.clone();
+                pathLine = new THREE.Line(pathGeo, lineMaterial);
+
+                if(draw_points) {
+                    
+                    pointsGeo = pathGeo.clone();
+                    pathPointcloud = new THREE.Points(pathGeo, pointsMaterial);
+                    
+                }
+                if(draw_normals) {
+                    var n = new THREE.Vector3(pathPoints[idx][3], pathPoints[idx][4], pathPoints[idx][5]);
+                    n.multiplyScalar(normal_scale);
+                    normalGeo = new THREE.Geometry();
+                    normalGeo.vertices.push(p);
+                    normalGeo.vertices.push(new THREE.Vector3().addVectors(p, n));
+                    normalLine = new THREE.Line(normalGeo, normalMaterial);
+                    scene.add(normalLine);
+                }
+            }
+        }
+
+        scene.add(pathLine);
+        scene.add(pathPointcloud);
+        //lastWalkStepTime = clock.getElapsedTime();
+
+        
+
+    }
+    //render();
+    animate();
+
+    function randomInt(low, high) {
+        return Math.floor(Math.random() * (high-low)) + low;
+    }
+    function randomItem(arr) {
+        // Choose a random item from an array
+        if(arr.length == 0) return;
+        return arr[randomInt(0, arr.length)];
+    }
+
+</script>
+</body>

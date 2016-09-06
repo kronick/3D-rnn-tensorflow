@@ -183,7 +183,19 @@ class Model():
     prev_state = sess.run(self.cell.zero_state(1, tf.float32))
 
     patch_points = np.zeros((sequence_length, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
-    mixture_params = []
+
+
+    if prime_array is not None:
+      print "Priming with {} points.".format(len(prime_array))
+
+      print prime_array[0]
+      for p in prime_array:
+        prime_x = np.array([[[p[0], p[1], p[2], 0, p[3], p[4], p[5]]]])
+        
+        feed = {self.input_data: prime_x, self.initial_state: prev_state}
+        [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, o_pi_normals, o_mu1_normals, o_mu2_normals, o_mu3_normals, o_sigma_normals, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.pi_normals, self.mu1_normals, self.mu2_normals, self.mu3_normals, self.sigma_normals, self.final_state],feed)
+
+        prev_state = next_state
 
     for i in xrange(sequence_length):
       # Each time step
@@ -209,6 +221,8 @@ class Model():
       next_n1, next_n2, next_n3 = sample_gaussian_3d(o_mu1_normals[0][idx], o_mu2_normals[0][idx], o_mu3_normals[0][idx], sig1, sig2, sig3)
 
       patch_points[i,:] = [next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3]
+      if i < 10:
+        print patch_points[i,0:3]
 
       prev_x = np.zeros((1, 1, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
       prev_x[0][0] = np.array([next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3], dtype=np.float32)

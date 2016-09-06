@@ -27,6 +27,17 @@ parser.add_argument('--temperature', type=float, default=1.0,
                    help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
 parser.add_argument("--number_sequences", type=int, default=1,
                    help='number of writing sequences to generate')
+parser.add_argument("--checkpoint", type=str, default='save',
+                   help='Directory containing trained checkpoint.')
+parser.add_argument("--prime_data", type=str, default=None,
+                   help='.XYZ file of data points to prime each sequence with')
+parser.add_argument("--prime_length", type=int, default=400,
+                   help='Number of points to pull from prime sequence.')
+
+concatenate_parser = parser.add_mutually_exclusive_group(required=False)
+concatenate_parser.add_argument('--concatenate', dest='concatenate', action='store_true')
+concatenate_parser.add_argument('--separate', dest='concatenate', action='store_false')
+parser.set_defaults(concatenate=True)
 
 relative_parser = parser.add_mutually_exclusive_group(required=False)
 relative_parser.add_argument('--relative', dest='relative', action='store_true')
@@ -35,23 +46,29 @@ parser.set_defaults(relative=False)
 
 sample_args = parser.parse_args()
 
-with open(os.path.join('save', 'config.pkl')) as f:
+with open(os.path.join(sample_args.checkpoint, 'config.pkl')) as f:
     saved_args = cPickle.load(f)
 
 model = Model(saved_args, True)
 sess = tf.InteractiveSession()
 saver = tf.train.Saver(tf.all_variables())
 
-ckpt = tf.train.get_checkpoint_state('save')
+ckpt = tf.train.get_checkpoint_state(sample_args.checkpoint)
 print "loading model: ",ckpt.model_checkpoint_path
 
 saver.restore(sess, ckpt.model_checkpoint_path)
 
-def sample_stroke(savefile):
-  points = model.sample(sess, sample_args.sample_length,sample_args.temperature)
 
-  with open(savefile, "w+") as f:
-    with open(savefile + ".json", "w+") as jsonfile:
+def generate_sample(prime_points):
+  prime_data = None
+  if sample_args.prime_data is not None:
+    prime_start = random.randint(0, len(prime_points)-sample_args.prime_length-1)
+    prime_data = prime_points[prime_start:prime_start+sample_args.prime_length]
+  return model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_data)
+
+def save_points(points, filename):
+  with open(filename + ".xyz", "w+") as f:
+    with open(filename + ".json", "w+") as jsonfile:
       jsonfile.write("pathPoints = [\n")
 
       last_point = np.array([0,0,0,0,0,0,0])
@@ -64,11 +81,31 @@ def sample_stroke(savefile):
 
         last_point = p
 
-      jsonfile.write("];")
+      jsonfile.write("];")  
 
-  return points
 
-for i in range(sample_args.number_sequences):
-  strokes = sample_stroke("{}-{}.xyz".format(sample_args.filename, i))
+# Generate prime data
+prime_points = None
+if sample_args.prime_data is not None:
+  prime_points = []
+  with open(sample_args.prime_data, 'r') as prime_file:
+    for line in prime_file:
+        point = [float(n) for n in line.split(" ")]
+        prime_points.append(point)
+
+if sample_args.concatenate:
+  points = None
+  for i in range(sample_args.number_sequences):
+    if points is None:
+      points = generate_sample(prime_points)
+    else:
+      points = np.concatenate((points, generate_sample(prime_points)))
+
+  save_points(points, sample_args.filename)
+
+else:
+  for i in range(sample_args.number_sequences):
+    points = generate_sample(prime_points)
+    save_points(points, "{}-{}".format(sample_args.filename, i))
 
 

@@ -2,6 +2,7 @@ import tensorflow as tf
 
 import numpy as np
 import random
+import math
 
 class Model():
   def __init__(self, args, infer=False):
@@ -155,7 +156,7 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None):
+  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None, initial_state = None):
 
     def get_pi_idx(x, pdf):
       """ Used to choose a random component from the weighted set of gaussian mixtures
@@ -180,7 +181,7 @@ class Model():
     # Set up starting conditions 
     prev_x = np.zeros((1, 1, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
     prev_x[0, 0, self.COORDINATE_DIMENSIONS] = 1 # initially, we want to see beginning of new stroke
-    prev_state = sess.run(self.cell.zero_state(1, tf.float32))
+    prev_state = sess.run(self.cell.zero_state(1, tf.float32)) if initial_state is None else initial_state
 
     patch_points = np.zeros((sequence_length, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
 
@@ -188,11 +189,11 @@ class Model():
     if prime_array is not None:
       print "Priming with {} points.".format(len(prime_array))
 
-      print prime_array[0]
+      print prime_array[len(prime_array) - 1][0:3]
       for p in prime_array:
-        prime_x = np.array([[[p[0], p[1], p[2], 0, p[3], p[4], p[5]]]])
+        prev_x = np.array([[[p[0], p[1], p[2], 0, p[3], p[4], p[5]]]])
         
-        feed = {self.input_data: prime_x, self.initial_state: prev_state}
+        feed = {self.input_data: prev_x, self.initial_state: prev_state}
         [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, o_pi_normals, o_mu1_normals, o_mu2_normals, o_mu3_normals, o_sigma_normals, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.pi_normals, self.mu1_normals, self.mu2_normals, self.mu3_normals, self.sigma_normals, self.final_state],feed)
 
         prev_state = next_state
@@ -204,29 +205,50 @@ class Model():
       # Get new output based on previous step
       [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, o_pi_normals, o_mu1_normals, o_mu2_normals, o_mu3_normals, o_sigma_normals, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.pi_normals, self.mu1_normals, self.mu2_normals, self.mu3_normals, self.sigma_normals, self.final_state],feed)
 
-      # Choose a guassian distribution to sample from based on their weights
-      idx = get_pi_idx(random.random(), o_pi[0])
+      no_good_point_found = True
+      attempts = 0
+      dist = 0
+      while no_good_point_found and attempts < 10:
+        # Choose a guassian distribution to sample from based on their weights
+        idx = get_pi_idx(random.random(), o_pi[0])
 
-      # Chance of picking up pen at each step
-      eos = 1 if random.random() < o_eos[0][0] else 0
+        # Chance of picking up pen at each step
+        eos = 1 if random.random() < o_eos[0][0] else 0
 
-      # Calculate a weighted random next point according to the chosen gaussian distribution
-      # Scale the standard deviations to bias towards more or less "normal" output
-      sig1 = sig2 = sig3 = scale_sigma * o_sigma[0][idx]
-      next_x1, next_x2, next_x3 = sample_gaussian_3d(o_mu1[0][idx], o_mu2[0][idx], o_mu3[0][idx], sig1, sig2, sig3)
+        # Calculate a weighted random next point according to the chosen gaussian distribution
+        # Scale the standard deviations to bias towards more or less "normal" output
+        sig1 = sig2 = sig3 = scale_sigma * o_sigma[0][idx]
+        next_x1, next_x2, next_x3 = sample_gaussian_3d(o_mu1[0][idx], o_mu2[0][idx], o_mu3[0][idx], sig1, sig2, sig3)
 
-      ### Do the same now for the vertex normals
-      idx = get_pi_idx(random.random(), o_pi_normals[0])
-      sig1 = sig2 = sig3 = scale_sigma * o_sigma_normals[0][idx]
-      next_n1, next_n2, next_n3 = sample_gaussian_3d(o_mu1_normals[0][idx], o_mu2_normals[0][idx], o_mu3_normals[0][idx], sig1, sig2, sig3)
+        ### Do the same now for the vertex normals
+        idx = get_pi_idx(random.random(), o_pi_normals[0])
+        sig1 = sig2 = sig3 = scale_sigma * o_sigma_normals[0][idx]
+        next_n1, next_n2, next_n3 = sample_gaussian_3d(o_mu1_normals[0][idx], o_mu2_normals[0][idx], o_mu3_normals[0][idx], sig1, sig2, sig3)
+
+        dX = np.array([next_x1, next_x2, next_x3] - prev_x[0][0][0:3])
+        dist = np.sqrt(dX.dot(dX))
+        if dist < 5:
+          no_good_point_found = False
+        else:
+          attempts += 1
+
+      if attempts > 0:
+        print "Took {} attempts to find a good point!".format(attempts)
 
       patch_points[i,:] = [next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3]
-      if i < 10:
-        print patch_points[i,0:3]
+      if dist > 5: # Big jump
+        print "Jumping from {} to {}".format(patch_points[i-1,0:3], patch_points[i,0:3])
+        print "PDF:"
+        print o_pi[0]
+        print "mu1s:"
+        print o_mu1[0]
+        print "Chosen prob: {}".format(o_pi[0][idx])
+        print "Chosen X coord: {}".format(o_mu1[0][idx])
 
       prev_x = np.zeros((1, 1, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
       prev_x[0][0] = np.array([next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3], dtype=np.float32)
+      
       prev_state = next_state
 
-    patch_points[:,0:3] /= self.args.data_scale
-    return patch_points
+    #patch_points[:,0:3] /= self.args.data_scale
+    return patch_points, prev_state

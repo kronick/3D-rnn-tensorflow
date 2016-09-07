@@ -10,12 +10,12 @@
     <script src="js/three.js"></script>
     <script src="js/OBJLoader.js"></script>
     <script src="js/TrackballControls.js"></script>
-    <script src="rockobj-0.xyz.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
+    <script src="cove.json" type="text/javascript"></script> <!-- defines global walkPoints array -->
 <script>
-    draw_normals = true;
+    draw_normals = false;
     draw_points = false;
     draw_lines = true;
-    steps_per_frame = 1;
+    steps_per_frame = 1000;
 
     vertex_scale = 1;
     normal_scale = 0.3;
@@ -38,7 +38,7 @@
     document.body.appendChild(renderer.domElement);
 
     var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00FF00 });
-    lineMaterial.opacity = draw_lines ? 0.3 : 0;
+    lineMaterial.opacity = draw_lines ? 0.05 : 0;
     lineMaterial.transparent = true;
 
     var normalMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF });
@@ -89,9 +89,7 @@
                 var p = new THREE.Vector3(pathPoints[idx][0], pathPoints[idx][1], pathPoints[idx][2]);
                 p.multiplyScalar(vertex_scale);
                 pathGeo.vertices.push(p);
-                pathGeo = pathGeo.clone();
-                pathLine = new THREE.Line(pathGeo, lineMaterial);
-
+            
                 if(draw_points) {
                     
                     pointsGeo = pathGeo.clone();
@@ -109,6 +107,9 @@
                 }
             }
         }
+
+        pathGeo = pathGeo.clone();
+        pathLine = new THREE.Line(pathGeo, lineMaterial);
 
         scene.add(pathLine);
         scene.add(pathPointcloud);

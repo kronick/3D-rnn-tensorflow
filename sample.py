@@ -21,7 +21,7 @@ parser.add_argument('--filename', type=str, default='sample',
                    help='filename of .svg file to output, without .svg')
 parser.add_argument('--sample_length', type=int, default=800,
                    help='number of strokes to sample')
-parser.add_argument('--scale_factor', type=int, default=5,
+parser.add_argument('--scale_factor', type=int, default=1,
                    help='factor to scale down by for svg output.  smaller means bigger output')
 parser.add_argument('--temperature', type=float, default=1.0,
                    help='factor to scale standard deviations by, creating bias towards more (>1.0) or less (<1.0) wild output')
@@ -59,12 +59,12 @@ print "loading model: ",ckpt.model_checkpoint_path
 saver.restore(sess, ckpt.model_checkpoint_path)
 
 
-def generate_sample(prime_points):
+def generate_sample(prime_points, initial_state):
   prime_data = None
   if sample_args.prime_data is not None:
     prime_start = random.randint(0, len(prime_points)-sample_args.prime_length-1)
     prime_data = prime_points[prime_start:prime_start+sample_args.prime_length]
-  return model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_data)
+  return model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_data, initial_state)
 
 def save_points(points, filename):
   with open(filename + ".xyz", "w+") as f:
@@ -95,17 +95,21 @@ if sample_args.prime_data is not None:
 
 if sample_args.concatenate:
   points = None
+  next_state = None
   for i in range(sample_args.number_sequences):
+    print "Generating sequence #{}/{} with {} points.".format(i, sample_args.number_sequences, sample_args.sample_length)
+    new_points, next_state = generate_sample(prime_points, next_state)
     if points is None:
-      points = generate_sample(prime_points)
+      points = new_points
     else:
-      points = np.concatenate((points, generate_sample(prime_points)))
+      points = np.concatenate((points, new_points))
 
   save_points(points, sample_args.filename)
 
 else:
+  next_state = None
   for i in range(sample_args.number_sequences):
-    points = generate_sample(prime_points)
+    points, next_state = generate_sample(prime_points, next_state)
     save_points(points, "{}-{}".format(sample_args.filename, i))
 
 

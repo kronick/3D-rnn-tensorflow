@@ -33,6 +33,10 @@ parser.add_argument("--prime_data", type=str, default=None,
                    help='.XYZ file of data points to prime each sequence with')
 parser.add_argument("--prime_length", type=int, default=400,
                    help='Number of points to pull from prime sequence.')
+parser.add_argument("--prime_scale", type=float, default=1,
+                   help="Factor to scale prime model by.")
+parser.add_argument("--distance_filter", type=float, default=10,
+                   help="Ignore jumps between points greater than this distance.")
 
 concatenate_parser = parser.add_mutually_exclusive_group(required=False)
 concatenate_parser.add_argument('--concatenate', dest='concatenate', action='store_true')
@@ -56,7 +60,15 @@ saver = tf.train.Saver(tf.all_variables())
 ckpt = tf.train.get_checkpoint_state(sample_args.checkpoint)
 print "loading model: ",ckpt.model_checkpoint_path
 
+
 saver.restore(sess, ckpt.model_checkpoint_path)
+# for v in tf.all_variables():
+#   #print "{} = {}".format(v.name, v.value())
+#   if v.name.startswith("rnnlm/MultiRNNCell/Cell1/BasicLSTMCell/Linear/Matrix:0"):
+#     print "{}: {}".format(v.name, v.value())
+#     for n in sess.run(v.value())[0]:
+#       print n
+  
 
 
 def generate_sample(prime_points, initial_state):
@@ -64,7 +76,7 @@ def generate_sample(prime_points, initial_state):
   if sample_args.prime_data is not None:
     prime_start = random.randint(0, len(prime_points)-sample_args.prime_length-1)
     prime_data = prime_points[prime_start:prime_start+sample_args.prime_length]
-  return model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_data, initial_state)
+  return model.sample(sess, sample_args.sample_length,sample_args.temperature, prime_data, initial_state, sample_args.distance_filter)
 
 def save_points(points, filename):
   with open(filename + ".xyz", "w+") as f:
@@ -90,7 +102,7 @@ if sample_args.prime_data is not None:
   prime_points = []
   with open(sample_args.prime_data, 'r') as prime_file:
     for line in prime_file:
-        point = [float(n) for n in line.split(" ")]
+        point = [float(n) * sample_args.prime_scale for n in line.split(" ") if n.strip() is not ""]
         prime_points.append(point)
 
 if sample_args.concatenate:

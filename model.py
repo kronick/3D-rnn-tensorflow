@@ -45,6 +45,7 @@ class Model():
       output_w = tf.get_variable("output_w", [args.rnn_size, NOUT])
       output_b = tf.get_variable("output_b", [NOUT])
 
+
     inputs = tf.split(1, args.seq_length, self.input_data)
     inputs = [tf.squeeze(input_, [1]) for input_ in inputs]
 
@@ -156,7 +157,7 @@ class Model():
     self.train_op = optimizer.apply_gradients(zip(grads, tvars))
 
 
-  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None, initial_state = None):
+  def sample(self, sess, sequence_length = 1200, scale_sigma = 1.0, prime_array = None, initial_state = None, distance_filter = 10):
 
     def get_pi_idx(x, pdf):
       """ Used to choose a random component from the weighted set of gaussian mixtures
@@ -205,6 +206,11 @@ class Model():
       # Get new output based on previous step
       [o_pi, o_mu1, o_mu2, o_mu3, o_sigma, o_eos, o_pi_normals, o_mu1_normals, o_mu2_normals, o_mu3_normals, o_sigma_normals, next_state] = sess.run([self.pi, self.mu1, self.mu2, self.mu3, self.sigma, self.eos, self.pi_normals, self.mu1_normals, self.mu2_normals, self.mu3_normals, self.sigma_normals, self.final_state],feed)
 
+      # Rescale mixture weights based on temperature
+      o_pi[0] = np.power(o_pi[0], 1 / scale_sigma)
+      o_pi[0] /= np.sum(o_pi[0]) # Ensure they add up to 1
+        
+
       no_good_point_found = True
       attempts = 0
       dist = 0
@@ -227,7 +233,7 @@ class Model():
 
         dX = np.array([next_x1, next_x2, next_x3] - prev_x[0][0][0:3])
         dist = np.sqrt(dX.dot(dX))
-        if dist < 5:
+        if dist < distance_filter:
           no_good_point_found = False
         else:
           attempts += 1
@@ -236,7 +242,7 @@ class Model():
         print "Took {} attempts to find a good point!".format(attempts)
 
       patch_points[i,:] = [next_x1, next_x2, next_x3, eos, next_n1, next_n2, next_n3]
-      if dist > 5: # Big jump
+      if dist > distance_filter: # Big jump
         print "Jumping from {} to {}".format(patch_points[i-1,0:3], patch_points[i,0:3])
         print "PDF:"
         print o_pi[0]

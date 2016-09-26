@@ -48,7 +48,7 @@ def main():
                      help='name mesh to use for training data')
   parser.add_argument('--smooth', type=float, default=0.8,
                      help='Amount to smooth random walk used to generate training data')
-  
+
   relative_parser = parser.add_mutually_exclusive_group(required=False)
   relative_parser.add_argument('--relative', dest='relative', action='store_true')
   relative_parser.add_argument('--absolute', dest='relative', action='store_false')

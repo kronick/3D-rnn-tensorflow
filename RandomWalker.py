@@ -37,43 +37,44 @@ class RandomWalker():
       _face_normals[idx] = []
       return idx
 
-    for a, b, c in self.mesh.faces:
-      # Get index for each point in the unique_vertices list
-      a_coords = self.mesh.vertices[a]
-      b_coords = self.mesh.vertices[b]
-      c_coords = self.mesh.vertices[c]
+    for mesh in scene.meshes:
+      for a, b, c in mesh.faces:
+        # Get index for each point in the unique_vertices list
+        a_coords = mesh.vertices[a]
+        b_coords = mesh.vertices[b]
+        c_coords = mesh.vertices[c]
 
-      a_index = match_unique_vertex(a_coords)
-      b_index = match_unique_vertex(b_coords)
-      c_index = match_unique_vertex(c_coords)
-           
+        a_index = match_unique_vertex(a_coords)
+        b_index = match_unique_vertex(b_coords)
+        c_index = match_unique_vertex(c_coords)
+             
 
-      if not self.vertex_connections.has_key(a_index):
-        self.vertex_connections[a_index] = set()
-      if not self.vertex_connections.has_key(b_index):
-        self.vertex_connections[b_index] = set()
-      if not self.vertex_connections.has_key(c_index):
-        self.vertex_connections[c_index] = set()
+        if not self.vertex_connections.has_key(a_index):
+          self.vertex_connections[a_index] = set()
+        if not self.vertex_connections.has_key(b_index):
+          self.vertex_connections[b_index] = set()
+        if not self.vertex_connections.has_key(c_index):
+          self.vertex_connections[c_index] = set()
 
-      self.vertex_connections[a_index].add(b_index)
-      self.vertex_connections[a_index].add(c_index)
+        self.vertex_connections[a_index].add(b_index)
+        self.vertex_connections[a_index].add(c_index)
 
-      self.vertex_connections[b_index].add(a_index)
-      self.vertex_connections[b_index].add(c_index)
+        self.vertex_connections[b_index].add(a_index)
+        self.vertex_connections[b_index].add(c_index)
 
-      self.vertex_connections[c_index].add(b_index)
-      self.vertex_connections[c_index].add(a_index)
+        self.vertex_connections[c_index].add(b_index)
+        self.vertex_connections[c_index].add(a_index)
 
-      # Calculate face normal and append to each point
-      I = b_coords - a_coords # Get vectors on the face
-      J = c_coords - a_coords
-      cross = np.cross(I, J)  # Cross product gives vector perpendicular to face
-      mag = np.sqrt(cross.dot(cross)) # Calculate magnitude
-      norm = cross / mag # Normalize the cross product perpendicular vector to get face normal
-  
-      _face_normals[a_index].append(norm)
-      _face_normals[b_index].append(norm)
-      _face_normals[c_index].append(norm)
+        # Calculate face normal and append to each point
+        I = b_coords - a_coords # Get vectors on the face
+        J = c_coords - a_coords
+        cross = np.cross(I, J)  # Cross product gives vector perpendicular to face
+        mag = np.sqrt(cross.dot(cross)) # Calculate magnitude
+        norm = cross / mag # Normalize the cross product perpendicular vector to get face normal
+    
+        _face_normals[a_index].append(norm)
+        _face_normals[b_index].append(norm)
+        _face_normals[c_index].append(norm)
 
     # Average face normals to get vertex normals
     for idx, norms in _face_normals.iteritems():
@@ -161,7 +162,7 @@ class RandomWalker():
     return np.concatenate((points_out,normals_out), axis=1) # Return array with points and normals concatenated -- shape is (n_steps, 7)
 
 if __name__ == "__main__":
-  w = RandomWalker("rock.obj")
+  w = RandomWalker("rock-models/formations.obj")
   points = w.walk(100)
   for p in points:
     print p

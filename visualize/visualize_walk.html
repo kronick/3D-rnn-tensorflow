@@ -15,7 +15,7 @@
     draw_normals = false;
     draw_points = false;
     draw_lines = true;
-    steps_per_frame = 1000;
+    steps_per_frame = 1;
 
     vertex_scale = 1;
     normal_scale = 0.3;
@@ -38,7 +38,7 @@
     document.body.appendChild(renderer.domElement);
 
     var lineMaterial = new THREE.LineBasicMaterial({ color: 0x00FF00 });
-    lineMaterial.opacity = draw_lines ? 0.05 : 0;
+    lineMaterial.opacity = draw_lines ? 0.3 : 0;
     lineMaterial.transparent = true;
 
     var normalMaterial = new THREE.LineBasicMaterial({ color: 0xFFFFFF });

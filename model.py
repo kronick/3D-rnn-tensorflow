@@ -186,6 +186,7 @@ class Model():
 
     patch_points = np.zeros((sequence_length, 2 * self.COORDINATE_DIMENSIONS + 1), dtype=np.float32)
 
+    states = np.zeros((sequence_length, prev_state.shape[1]), dtype=np.float32)
 
     if prime_array is not None:
       print "Priming with {} points.".format(len(prime_array))
@@ -256,5 +257,7 @@ class Model():
       
       prev_state = next_state
 
-    #patch_points[:,0:3] /= self.args.data_scale
-    return patch_points, prev_state
+      # Append state
+      states[i] = prev_state[0]
+
+    return patch_points, states, prev_state

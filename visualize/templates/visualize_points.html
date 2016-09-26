@@ -1,0 +1,125 @@
+<!doctype html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="static/style.css">
+
+    <script src="static/js/three.js"></script>
+    <script src="static/js/OBJLoader.js"></script>
+    <script src="static/js/TrackballControls.js"></script>
+    <script src="static/js/jquery-3.1.0.js"></script>
+
+    <script src="static/js/PointcloudViewer.js"></script>
+
+    <script type="text/javascript">
+    var viewer;
+    $(function() {
+        N_CELLS = 512;
+
+        viewer = new PointcloudViewer();
+
+        $.get("/files", function(data) {
+            filelist = data["files"];
+            $.each(filelist, function(idx, filename) {
+                var optionEl = $("<option>", {
+                    value: filename,
+                    text: filename
+                });
+                
+                $("#fileSelector").append(optionEl);
+            })
+        })
+
+        $("#fileSelector").change(function() {
+            filename = $("#fileSelector option:selected")[0].value;
+            $.get("/files/" + filename + "/points", function(data) {
+                console.log("Downloaded points for '" + filename + "'");
+                console.log(data)
+                viewer.loadPoints(data["points"]);
+            })
+        });
+
+        $("#pointSize").change(function() {
+            viewer.setPointSize($("#pointSize").val());
+        })
+
+        function colorByState(idx) {
+            // Download color data
+            color_a = [1,0,0];
+            color_b = [0,1,0];
+
+            filename = $("#fileSelector option:selected")[0].value;
+            console.log("Downloading content for cell state #" + idx);
+            $.get("/files/" + filename + "/states/" + idx, function(data) {
+                states = data["states"]
+                colors = [];
+                range = data["max"] - data["min"];
+
+                console.log("Min: " + data["min"])
+                console.log("Max: " + data["max"])
+
+                for(var i=0; i<states.length; i++) {
+                    var percent = (states[i] - data["min"]) / range;
+                    color = [
+                        percent * (color_a[0] - color_b[0]) + color_b[0],
+                        percent * (color_a[1] - color_b[1]) + color_b[1],
+                        percent * (color_a[2] - color_b[2]) + color_b[2]
+                    ];
+                    colors.push(color);
+                }
+                viewer.setColors(colors);    
+                console.log("Colors set!");
+            });            
+        }
+
+        // TODO: Fix this so it works with a variable size of cells and layers
+        $("#cellMemoryIdx").change(function() {
+            idx = parseInt($("#cellMemoryIdx").val());
+            if(idx >= N_CELLS) {
+                idx = 2 * N_CELLS + idx % N_CELLS;
+            }
+
+            colorByState(idx);
+        });
+        $("#cellOutputIdx").change(function() {
+            idx = parseInt($("#cellOutputIdx").val()) + N_CELLS;
+            if(idx >= N_CELLS * 2) {
+                idx += N_CELLS;
+            }
+            colorByState(idx);
+        });
+
+        $("#stateIdx").change(function() {
+            idx = $("#stateIdx").val();
+            colorByState(idx);
+        });
+           
+    });
+    </script>
+</head>
+<body>
+    
+    <div id="ui">
+        Load File:
+        <select id="fileSelector">
+        <option>---</option>
+        </select>
+        <br>
+        Point size:
+        <input type="number" id="pointSize" value="0.5">
+        <br>
+        Color by cell memory: 
+        <input type="number" id="cellMemoryIdx" value="0">
+        <br>
+        Color by cell output: 
+        <input type="number" id="cellOutputIdx" value="0">
+        <br>
+        Color by state IDX: 
+        <input type="number" id="stateIdx" value="0">
+
+    </div>
+
+<script>
+    
+
+</script>
+</body>

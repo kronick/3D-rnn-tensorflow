@@ -89,7 +89,7 @@ def synthesize_training_data(args):
   walker = RandomWalker(args.mesh_filename)
   num_batches = args.num_training_samples / args.batch_size
   n_samples = num_batches * args.batch_size
-  training_data = walker.walk(n_samples, args.relative, smooth = args.smooth)
+  training_data = walker.walk(n_samples, args.relative, smooth = args.smooth, reset_every = args.seq_length * 10)
   training_data[:,0:3] *= args.data_scale
 
   return training_data

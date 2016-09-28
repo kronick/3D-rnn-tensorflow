@@ -38,6 +38,7 @@ class RandomWalker():
       return idx
 
     for mesh in scene.meshes:
+      print mesh
       for a, b, c in mesh.faces:
         # Get index for each point in the unique_vertices list
         a_coords = mesh.vertices[a]
@@ -75,6 +76,9 @@ class RandomWalker():
         _face_normals[a_index].append(norm)
         _face_normals[b_index].append(norm)
         _face_normals[c_index].append(norm)
+
+      print len(self.unique_vertices)
+      print len(self.unique_vertex_indices)
 
     # Average face normals to get vertex normals
     for idx, norms in _face_normals.iteritems():
@@ -117,7 +121,7 @@ class RandomWalker():
 
     return max_idx
 
-  def walk(self, n_steps, relative = True, smooth = 0):
+  def walk(self, n_steps, relative = True, smooth = 0, reset_every = -1):
     """ Randomly walk from point to point on the mesh, starting at a random point """
     if not self.loaded:
        return []
@@ -130,12 +134,17 @@ class RandomWalker():
     # Start at a random point
     previous_vertex_index = -1
     last_vertex_index = random.randint(0, len(self.unique_vertices)-1)
+    print "Starting walk at vertex #{}".format(last_vertex_index)
     p = self.unique_vertices[last_vertex_index]
     last_point = np.array([p[0],p[1],p[2], 0])
     points_out[0] = np.array([0,0,0,0]) if relative else last_point
     normals_out[0] = self.vertex_normals[last_vertex_index]
 
     for i in xrange(n_steps-1):
+      # Choose a new random starting point if reset_every is set
+      if reset_every >= 0 and i % reset_every == 0:
+        last_vertex_index = random.randint(0, len(self.unique_vertices)-1)
+        
       # Get vertex connections
       connections = self.vertex_connections.get(last_vertex_index)
       if connections == None or len(connections) == 0:
